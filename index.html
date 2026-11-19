@@ -3,62 +3,175 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Cours de bourse</title>
+  <title>Suivi des marchés</title>
+  <style>
+    body {
+      max-width: 900px;
+      margin: 40px auto;
+      padding: 0 16px;
+      font: 16px system-ui, sans-serif;
+      color: #172033;
+      background: #f4f6fa;
+    }
+    h1 { margin-bottom: 8px; }
+    #status { color: #596579; margin-bottom: 20px; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 14px;
+      text-align: left;
+      border-bottom: 1px solid #e8ebf0;
+    }
+    th { background: #eaf0f8; }
+    button { padding: 9px 14px; cursor: pointer; }
+    .note { margin-top: 16px; color: #596579; font-size: 0.9rem; }
+  </style>
 </head>
 <body>
-  <h1>Cours d’une action</h1>
+  <h1>Tableau de bord boursier</h1>
+  <p id="status">Chargement…</p>
+  <button id="refresh">Actualiser maintenant</button>
 
-  <label for="symbol">Symbole :</label>
-  <input id="symbol" value="IBM">
-  <button id="load">Afficher le cours</button>
+  <table>
+    <thead>
+      <tr>
+        <th>Valeur</th>
+        <th>Symbole API</th>
+        <th>Dernier cours</th>
+        <th>Variation</th>
+        <th>Dernière donnée</th>
+      </tr>
+    </thead>
+    <tbody id="rows"></tbody>
+  </table>
 
-  <p id="result">Saisissez un symbole.</p>
+  <p class="note">
+    Actualisation automatique toutes les heures. Les données affichées
+    peuvent être différées ou indisponibles selon l’offre et les symboles
+    pris en charge par Alpha Vantage.
+  </p>
 
   <script>
-    const API_KEY = "EAIJNNBVOB1J35LY";
+    const API_KEY = "VOTRE_CLE_API";
 
-    document.querySelector("#load").addEventListener("click", async () => {
-      const symbol = document.querySelector("#symbol").value.trim();
-      const result = document.querySelector("#result");
+    // Vérifiez les symboles avec SYMBOL_SEARCH sur Alpha Vantage.
+    const valeurs = [
+      { nom: "WPEA", symbole: "WPEA" },
+      { nom: "S&P 500", symbole: "SPX", index: true },
+      { nom: "PAEEM", symbole: "PAEEM.PA" }
+    ];
 
-      if (!symbol) {
-        result.textContent = "Veuillez saisir un symbole.";
-        return;
-      }
+    const rows = document.querySelector("#rows");
+    const status = document.querySelector("#status");
+    const bouton = document.querySelector("#refresh");
 
-      result.textContent = "Chargement…";
+    function ligne(valeur) {
+      return `
+        <tr>
+          <td>${valeur.nom}</td>
+          <td>${valeur.symbole}</td>
+          <td id="prix-${valeur.symbole}">—</td>
+          <td id="variation-${valeur.symbole}">—</td>
+          <td id="date-${valeur.symbole}">—</td>
+        </tr>`;
+    }
 
+    rows.innerHTML = valeurs.map(ligne).join("");
+
+    async function requeteAlphaVantage(parametres) {
       const url = new URL("https://www.alphavantage.co/query");
       url.search = new URLSearchParams({
-        function: "GLOBAL_QUOTE",
-        symbol,
+        ...parametres,
         apikey: API_KEY
       });
 
-      try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error("Erreur réseau");
+      const reponse = await fetch(url);
+      if (!reponse.ok) throw new Error("Erreur réseau");
 
-        const data = await response.json();
+      const donnees = await reponse.json();
 
-        if (data["Error Message"]) {
-          throw new Error(data["Error Message"]);
-        }
-        if (data.Note || data.Information) {
-          throw new Error("Limite de requêtes atteinte ou information API.");
-        }
-
-        const quote = data["Global Quote"];
-        if (!quote || !quote["05. price"]) {
-          throw new Error("Aucun cours trouvé pour ce symbole.");
-        }
-
-        result.textContent =
-          `${quote["01. symbol"]} : ${Number(quote["05. price"]).toFixed(2)} USD`;
-      } catch (error) {
-        result.textContent = `Impossible de récupérer le cours : ${error.message}`;
+      if (donnees.Note || donnees.Information || donnees["Error Message"]) {
+        throw new Error(donnees.Note || donnees.Information || donnees["Error Message"]);
       }
-    });
+      return donnees;
+    }
+
+    async function chargerValeur(valeur) {
+      const prixCell = document.querySelector(`#prix-${valeur.symbole}`);
+      const variationCell = document.querySelector(`#variation-${valeur.symbole}`);
+      const dateCell = document.querySelector(`#date-${valeur.symbole}`);
+
+      try {
+        let prix, variation, date;
+
+        if (valeur.index) {
+          // INDEX_DATA est Premium chez Alpha Vantage.
+          const data = await requeteAlphaVantage({
+            function: "INDEX_DATA",
+            symbol: valeur.symbole,
+            interval: "daily"
+          });
+
+          const serie = data["Time Series (Daily)"];
+          if (!serie) throw new Error("Série d’indice introuvable.");
+
+          const dernierJour = Object.keys(serie).sort().at(-1);
+          prix = serie[dernierJour]["4. close"];
+          date = dernierJour;
+          variation = "—";
+        } else {
+          const data = await requeteAlphaVantage({
+            function: "GLOBAL_QUOTE",
+            symbol: valeur.symbole
+          });
+
+          const quote = data["Global Quote"];
+          if (!quote || !quote["05. price"]) {
+            throw new Error("Cours introuvable pour ce symbole.");
+          }
+
+          prix = quote["05. price"];
+          variation = quote["10. change percent"];
+          date = quote["07. latest trading day"];
+        }
+
+        prixCell.textContent = Number(prix).toLocaleString("fr-FR", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 4
+        });
+        variationCell.textContent = variation || "—";
+        dateCell.textContent = date || "—";
+      } catch (erreur) {
+        prixCell.textContent = "Indisponible";
+        variationCell.textContent = "—";
+        dateCell.textContent = erreur.message;
+      }
+    }
+
+    async function actualiser() {
+      status.textContent = "Mise à jour en cours…";
+      bouton.disabled = true;
+
+      // Les appels sont espacés pour éviter d’enchaîner les requêtes trop vite.
+      for (const valeur of valeurs) {
+        await chargerValeur(valeur);
+        await new Promise(resolve => setTimeout(resolve, 12000));
+      }
+
+      status.textContent = `Dernière vérification : ${
+        new Date().toLocaleString("fr-FR")
+      }`;
+      bouton.disabled = false;
+    }
+
+    bouton.addEventListener("click", actualiser);
+    actualiser();
+    setInterval(actualiser, 60 * 60 * 1000);
   </script>
 </body>
 </html>
