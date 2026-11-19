@@ -180,30 +180,30 @@
     }
   }
 
-  async function loadMarkets() {
-    try {
-      const query = symbols.map(([symbol]) => symbol).join(",");
-      const yahoo = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(query)}`;
-      const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(yahoo)}`);
-      if (!response.ok) throw new Error();
-      const data = await response.json();
-      const quotes = data.quoteResponse.result || [];
+ async function loadMarkets() {
+  const etfs = [
+    { name: "WPEA", symbol: "WPEA.PA", url: "https://www.google.com/finance/quote/WPEA:EPA" },
+    { name: "PAEEM", symbol: "PAEEM.PA", url: "https://www.google.com/finance/quote/PAEEM:EPA" },
+    { name: "PSP5", symbol: "PSP5.PA", url: "https://www.google.com/finance/quote/PSP5:EPA" }
+  ];
 
-      $("funds").innerHTML = symbols.map(([symbol,label]) => {
-        const q = quotes.find(item => item.symbol === symbol);
-        if (!q) return `<div class="fund"><div><div class="ticker">${label}</div><div class="fund-name">${symbol}</div></div><span class="status">Indisponible</span></div>`;
-        const change = Number(q.regularMarketChangePercent || 0);
-        const price = new Intl.NumberFormat("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2}).format(q.regularMarketPrice);
-        return `<div class="fund">
-          <div><div class="ticker">${label}</div><div class="fund-name">${symbol}</div></div>
-          <div class="price">${price} ${q.currency || "€"}<br><small class="${change >= 0 ? "positive" : "negative"}">${change >= 0 ? "+" : ""}${change.toFixed(2)}%</small></div>
-        </div>`;
-      }).join("");
-      $("market-update").textContent = `Cours potentiellement différés · actualisé à ${new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}`;
-    } catch {
-      $("funds").innerHTML = '<div class="status">Cours indisponibles pour le moment.</div>';
-    }
-  }
+  $("funds").innerHTML = etfs.map(etf => `
+    <div class="fund">
+      <div>
+        <div class="ticker">${etf.name}</div>
+        <div class="fund-name">${etf.symbol}</div>
+      </div>
+      <a href="${etf.url}" target="_blank" rel="noopener"
+         style="color:#8bc7ff;text-decoration:none">
+        Voir le cours ↗
+      </a>
+    </div>
+  `).join("");
+
+  $("market-update").textContent =
+    "Ouvrez un ETF pour consulter son cours sur Google Finance.";
+}
+
 
   loadWeather();
   loadMarkets();
