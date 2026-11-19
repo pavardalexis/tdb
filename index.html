@@ -3,251 +3,62 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#101827">
-  <title>Tableau de bord — Saint-Maxire</title>
-  <style>
-    :root {
-      color-scheme: dark;
-      --bg: #0c1422;
-      --panel: rgba(25, 39, 59, .88);
-      --line: rgba(255,255,255,.09);
-      --text: #f3f6fb;
-      --muted: #9cacc1;
-      --blue: #8bc7ff;
-      --green: #70e0a1;
-    }
-    * { box-sizing: border-box }
-    body {
-      margin: 0; min-height: 100vh; padding: 28px;
-      color: var(--text);
-      background:
-        radial-gradient(ellipse at 12% 0%, #233e63 0, transparent 38%),
-        radial-gradient(ellipse at 90% 10%, #27334e 0, transparent 32%),
-        var(--bg);
-      font: 16px system-ui, -apple-system, sans-serif;
-    }
-    .wrap { max-width: 1250px; margin: auto }
-    header { display:flex; justify-content:space-between; align-items:center; gap:20px; margin-bottom:24px }
-    .eyebrow { color:var(--blue); text-transform:uppercase; letter-spacing:.14em; font-size:12px; font-weight:700 }
-    h1 { margin:4px 0 0; font-size:clamp(28px, 5vw, 46px); letter-spacing:-.04em }
-    #clock { color:var(--muted); text-align:right; line-height:1.6 }
-    main { display:grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, .85fr); gap:18px }
-    .card {
-      border:1px solid var(--line); border-radius:22px; padding:22px;
-      background:var(--panel); box-shadow:0 16px 45px rgba(0,0,0,.18);
-      backdrop-filter:blur(12px);
-    }
-    .weather-top { display:flex; justify-content:space-between; align-items:center; gap:16px }
-    .current { display:flex; align-items:center; gap:18px }
-    #weather-icon { font-size:64px; line-height:1 }
-    #temperature { font-size:clamp(54px, 9vw, 78px); font-weight:700; letter-spacing:-.06em; line-height:1 }
-    #description { color:var(--muted); margin-top:8px; font-size:18px }
-    .details { display:flex; flex-wrap:wrap; gap:10px; margin-top:20px }
-    .pill { border:1px solid var(--line); border-radius:14px; padding:10px 13px; color:#dce7f4; background:rgba(255,255,255,.035) }
-    h2 { font-size:19px; margin:0 0 16px }
-    .hourly { display:flex; gap:10px; overflow-x:auto; padding:3px 1px 9px; scrollbar-color:#536984 transparent }
-    .hour {
-      flex:0 0 92px; text-align:center; padding:13px 9px;
-      border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.035)
-    }
-    .hour-time { color:var(--muted); font-size:13px }
-    .hour-icon { font-size:25px; margin:9px 0 }
-    .hour-temp { font-size:20px; font-weight:700 }
-    .rain { color:#8bc7ff; font-size:13px; margin-top:7px }
-    .market-card { grid-column:2; grid-row:1 / span 2 }
-    .fund { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:15px 0; border-top:1px solid var(--line) }
-    .ticker { font-weight:700; letter-spacing:.03em }
-    .fund-name { color:var(--muted); font-size:13px; margin-top:4px }
-    .price { text-align:right; font-size:18px; font-weight:700 }
-    .positive { color:var(--green) }
-    .negative { color:#ff9292 }
-    footer { color:#7f91a8; font-size:12px; line-height:1.5; margin-top:16px }
-    .status { color:var(--muted); font-size:14px }
-    @media (max-width:800px) {
-      body { padding:17px }
-      main { grid-template-columns:1fr }
-      .market-card { grid-column:auto; grid-row:auto }
-      .card { padding:18px }
-    }
-  </style>
+  <title>Cours de bourse</title>
 </head>
 <body>
-<div class="wrap">
-  <header>
-    <div>
-      <div class="eyebrow">Tableau de bord</div>
-      <h1>Saint-Maxire <span style="color:#9cacc1">· 79410</span></h1>
-    </div>
-    <div id="clock"></div>
-  </header>
+  <h1>Cours d’une action</h1>
 
-  <main>
-    <section class="card">
-      <div class="weather-top">
-        <div class="current">
-          <div id="weather-icon">⛅</div>
-          <div>
-            <div id="temperature">—°</div>
-            <div id="description">Chargement de la météo…</div>
-          </div>
-        </div>
-      </div>
-      <div class="details">
-        <div class="pill" id="feels">Ressenti : —</div>
-        <div class="pill" id="wind">Vent : —</div>
-        <div class="pill" id="rain-now">Pluie : —</div>
-      </div>
-    </section>
+  <label for="symbol">Symbole :</label>
+  <input id="symbol" value="IBM">
+  <button id="load">Afficher le cours</button>
 
-    <section class="card market-card">
-      <h2>Marchés · Paris</h2>
-      <div id="funds" class="status">Chargement des cours…</div>
-      <footer id="market-update">Cours susceptibles d’être différés.</footer>
-    </section>
+  <p id="result">Saisissez un symbole.</p>
 
-    <section class="card">
-      <h2>Prévisions heure par heure</h2>
-      <div id="hourly" class="hourly"><span class="status">Chargement…</span></div>
-      <footer>Température et probabilité de pluie prévues pour les prochaines heures.</footer>
-    </section>
-  </main>
-</div>
+  <script>
+    const API_KEY = "EAIJNNBVOB1J35LY;
 
-<script>
-  const $ = id => document.getElementById(id);
-  const symbols = [["WPEA.PA","WPEA"],["PAEEM.PA","PAEEM"],["PSP5.PA","PSP5"]];
+    document.querySelector("#load").addEventListener("click", async () => {
+      const symbol = document.querySelector("#symbol").value.trim();
+      const result = document.querySelector("#result");
 
-  function updateClock() {
-    const now = new Date();
-    $("clock").innerHTML =
-      `${new Intl.DateTimeFormat("fr-FR", {weekday:"long", day:"numeric", month:"long"}).format(now)}<br>` +
-      `<strong>${new Intl.DateTimeFormat("fr-FR", {hour:"2-digit", minute:"2-digit"}).format(now)}</strong>`;
-  }
-  updateClock();
-  setInterval(updateClock, 30000);
-
-  function weatherInfo(code) {
-    if (code === 0) return ["☀️", "Ciel dégagé"];
-    if (code <= 2) return ["🌤️", "Éclaircies"];
-    if (code === 3) return ["☁️", "Couvert"];
-    if (code <= 48) return ["🌫️", "Brouillard"];
-    if (code <= 57) return ["🌦️", "Bruine"];
-    if (code <= 67) return ["🌧️", "Pluie"];
-    if (code <= 77) return ["❄️", "Neige"];
-    if (code <= 82) return ["🌦️", "Averses"];
-    return ["⛈️", "Orage"];
-  }
-
-  async function loadWeather() {
-    const url = "https://api.open-meteo.com/v1/forecast?latitude=46.416&longitude=-0.435&current=temperature_2m,apparent_temperature,weather_code,wind_speed_10m,precipitation,precipitation_probability&hourly=temperature_2m,precipitation_probability,precipitation,weather_code&forecast_days=2&timezone=Europe%2FParis";
-    try {
-      const response = await fetch(url);
-      if (!response.ok) throw new Error();
-      const data = await response.json();
-      const c = data.current;
-      const [icon, description] = weatherInfo(c.weather_code);
-
-      $("weather-icon").textContent = icon;
-      $("temperature").textContent = `${Math.round(c.temperature_2m)}°`;
-      $("description").textContent = description;
-      $("feels").textContent = `Ressenti : ${Math.round(c.apparent_temperature)}°`;
-      $("wind").textContent = `Vent : ${Math.round(c.wind_speed_10m)} km/h`;
-      $("rain-now").textContent = `Précipitations : ${Number(c.precipitation || 0).toLocaleString("fr-FR")} mm`;
-
-      const times = data.hourly.time;
-      const now = new Date();
-      let start = times.findIndex(t => new Date(t) >= new Date(now.getTime() - 30 * 60 * 1000));
-      if (start < 0) start = 0;
-
-      const items = [];
-      for (let i = start; i < Math.min(start + 24, times.length); i++) {
-        const date = new Date(times[i]);
-        const [hourIcon] = weatherInfo(data.hourly.weather_code[i]);
-        const temp = Math.round(data.hourly.temperature_2m[i]);
-        const chance = data.hourly.precipitation_probability[i];
-        const amount = data.hourly.precipitation[i];
-        items.push(`<div class="hour">
-          <div class="hour-time">${i === start ? "Maintenant" : date.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})}</div>
-          <div class="hour-icon">${hourIcon}</div>
-          <div class="hour-temp">${temp}°</div>
-          <div class="rain">💧 ${chance ?? 0}%<br>${Number(amount || 0).toLocaleString("fr-FR")} mm</div>
-        </div>`);
+      if (!symbol) {
+        result.textContent = "Veuillez saisir un symbole.";
+        return;
       }
-      $("hourly").innerHTML = items.join("");
-    } catch {
-      $("description").textContent = "Météo indisponible";
-      $("hourly").innerHTML = '<span class="status">Prévisions indisponibles pour le moment.</span>';
-    }
-  }
 
- async function loadMarkets() {
-  const etfs = [
-    { name: "WPEA", symbol: "wpea.fr" },
-    { name: "PAEEM", symbol: "paeem.fr" },
-    { name: "PSP5", symbol: "psp5.fr" }
-  ];
+      result.textContent = "Chargement…";
 
-  $("funds").innerHTML =
-    '<div class="status">Chargement des cours…</div>';
+      const url = new URL("https://www.alphavantage.co/query");
+      url.search = new URLSearchParams({
+        function: "GLOBAL_QUOTE",
+        symbol,
+        apikey: API_KEY
+      });
 
-  const rows = await Promise.all(etfs.map(async etf => {
-    try {
-      const url = `https://stooq.com/q/l/?s=${etf.symbol}&f=sd2t2ohlcv&h&e=csv`;
-      const response = await fetch(
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
-      );
-      if (!response.ok) throw new Error();
+      try {
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("Erreur réseau");
 
-      const csv = await response.text();
-      const values = csv.trim().split(/\r?\n/).pop().split(",");
+        const data = await response.json();
 
-      // Format Stooq : Symbol,Date,Time,Open,High,Low,Close,Volume
-      const price = Number(values[6]);
-      if (!Number.isFinite(price) || price <= 0) throw new Error();
+        if (data["Error Message"]) {
+          throw new Error(data["Error Message"]);
+        }
+        if (data.Note || data.Information) {
+          throw new Error("Limite de requêtes atteinte ou information API.");
+        }
 
-      return `
-        <div class="fund">
-          <div>
-            <div class="ticker">${etf.name}</div>
-            <div class="fund-name">${etf.symbol.toUpperCase()}</div>
-          </div>
-          <div class="price">
-            ${price.toLocaleString("fr-FR", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2
-            })} €
-            <div class="status">Dernière valeur disponible</div>
-          </div>
-        </div>
-      `;
-    } catch {
-      return `
-        <div class="fund">
-          <div>
-            <div class="ticker">${etf.name}</div>
-            <div class="fund-name">${etf.symbol.toUpperCase()}</div>
-          </div>
-          <span class="status">Cours indisponible</span>
-        </div>
-      `;
-    }
-  }));
+        const quote = data["Global Quote"];
+        if (!quote || !quote["05. price"]) {
+          throw new Error("Aucun cours trouvé pour ce symbole.");
+        }
 
-  $("funds").innerHTML = rows.join("");
-  $("market-update").textContent =
-    `Source Stooq · actualisé à ${new Date().toLocaleTimeString("fr-FR", {
-      hour: "2-digit",
-      minute: "2-digit"
-    })} · données potentiellement différées`;
-}
-
-
-
-  loadWeather();
-  loadMarkets();
-  setInterval(loadWeather, 15 * 60 * 1000);
-  setInterval(loadMarkets, 5 * 60 * 1000);
-</script>
+        result.textContent =
+          `${quote["01. symbol"]} : ${Number(quote["05. price"]).toFixed(2)} USD`;
+      } catch (error) {
+        result.textContent = `Impossible de récupérer le cours : ${error.message}`;
+      }
+    });
+  </script>
 </body>
 </html>
-
