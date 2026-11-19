@@ -182,27 +182,65 @@
 
  async function loadMarkets() {
   const etfs = [
-    { name: "WPEA", symbol: "WPEA.PA", url: "https://www.google.com/finance/quote/WPEA:EPA" },
-    { name: "PAEEM", symbol: "PAEEM.PA", url: "https://www.google.com/finance/quote/PAEEM:EPA" },
-    { name: "PSP5", symbol: "PSP5.PA", url: "https://www.google.com/finance/quote/PSP5:EPA" }
+    { name: "WPEA", symbol: "wpea.fr" },
+    { name: "PAEEM", symbol: "paeem.fr" },
+    { name: "PSP5", symbol: "psp5.fr" }
   ];
 
-  $("funds").innerHTML = etfs.map(etf => `
-    <div class="fund">
-      <div>
-        <div class="ticker">${etf.name}</div>
-        <div class="fund-name">${etf.symbol}</div>
-      </div>
-      <a href="${etf.url}" target="_blank" rel="noopener"
-         style="color:#8bc7ff;text-decoration:none">
-        Voir le cours ↗
-      </a>
-    </div>
-  `).join("");
+  $("funds").innerHTML =
+    '<div class="status">Chargement des cours…</div>';
 
+  const rows = await Promise.all(etfs.map(async etf => {
+    try {
+      const url = `https://stooq.com/q/l/?s=${etf.symbol}&f=sd2t2ohlcv&h&e=csv`;
+      const response = await fetch(
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`
+      );
+      if (!response.ok) throw new Error();
+
+      const csv = await response.text();
+      const values = csv.trim().split(/\r?\n/).pop().split(",");
+
+      // Format Stooq : Symbol,Date,Time,Open,High,Low,Close,Volume
+      const price = Number(values[6]);
+      if (!Number.isFinite(price) || price <= 0) throw new Error();
+
+      return `
+        <div class="fund">
+          <div>
+            <div class="ticker">${etf.name}</div>
+            <div class="fund-name">${etf.symbol.toUpperCase()}</div>
+          </div>
+          <div class="price">
+            ${price.toLocaleString("fr-FR", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2
+            })} €
+            <div class="status">Dernière valeur disponible</div>
+          </div>
+        </div>
+      `;
+    } catch {
+      return `
+        <div class="fund">
+          <div>
+            <div class="ticker">${etf.name}</div>
+            <div class="fund-name">${etf.symbol.toUpperCase()}</div>
+          </div>
+          <span class="status">Cours indisponible</span>
+        </div>
+      `;
+    }
+  }));
+
+  $("funds").innerHTML = rows.join("");
   $("market-update").textContent =
-    "Ouvrez un ETF pour consulter son cours sur Google Finance.";
+    `Source Stooq · actualisé à ${new Date().toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit"
+    })} · données potentiellement différées`;
 }
+
 
 
   loadWeather();
